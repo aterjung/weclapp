@@ -197,12 +197,16 @@ class Connection implements ConnectionInterface
      *
      * @param  Request $query
      * @param  array $bindings
-     * @return int
+     * @return mixed
      */
     public function update($query, $bindings = [])
     {
         return $this->run($query, $bindings, function ($query) {
-            return $this->client->send($query)->getStatusCode() == 201;
+            $response = $this->client->send($query);
+            if ($response->getStatusCode() == 201) {
+                return json_decode($response->getBody(), true);
+            }
+            return false;
         });
     }
 

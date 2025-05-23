@@ -104,7 +104,7 @@ class Builder extends BaseBuilder
      * Update a record in the database.
      *
      * @param  array  $values
-     * @return int
+     * @return mixed
      */
     public function update(array $values)
     {
