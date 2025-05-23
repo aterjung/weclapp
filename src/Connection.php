@@ -9,6 +9,7 @@ use Geccomedia\Weclapp\Query\Processors\Processor;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\Log;
 
 class Connection implements ConnectionInterface
 {
@@ -203,7 +204,7 @@ class Connection implements ConnectionInterface
     {
         return $this->run($query, $bindings, function ($query) {
             $response = $this->client->send($query);
-            if ($response->getStatusCode() == 201) {
+            if ($response->getStatusCode() == 200) {
                 return json_decode($response->getBody(), true);
             }
             return false;

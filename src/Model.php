@@ -136,7 +136,7 @@ abstract class Model extends BaseModel
      * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return bool
      */
-    protected function performUpdate(Builder $query)
+    protected function performUpdate(\Illuminate\Database\Eloquent\Builder $query)
     {
         // If the updating event returns false, we will cancel the update operation so
         // developers can hook Validation systems into their models and cancel this
