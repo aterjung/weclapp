@@ -89,6 +89,18 @@ class Builder extends BaseBuilder
     }
 
     /**
+     * Set whether to ignore missing properties in API requests
+     *
+     * @param bool $ignore
+     * @return $this
+     */
+    public function ignoreMissingProperties(bool $ignore = true)
+    {
+        $this->query->ignoreMissingProperties($ignore);
+        return $this;
+    }
+
+    /**
      * Update a record in the database.
      *
      * @param  array  $values

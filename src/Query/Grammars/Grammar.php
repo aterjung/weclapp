@@ -11,6 +11,12 @@ use Illuminate\Database\Query\Grammars\Grammar as BaseGrammar;
 class Grammar extends BaseGrammar
 {
     /**
+     * Flag to indicate whether to ignore missing properties in API requests
+     * @var bool
+     */
+    protected bool $ignoreMissingProperties = false;
+
+    /**
      * Mapping table from normal eloquent operators to weclapp
      * @var array
      */
@@ -390,7 +396,14 @@ class Grammar extends BaseGrammar
         }
         $key = array_shift($query->wheres);
 
-        return new Request('PUT', $query->from . '/' . $key['column'] . '/' . $key['value'], [], json_encode($values));
+        $url = $query->from . '/' . $key['column'] . '/' . $key['value'];
+
+        // Add ignoreMissingProperties parameter if set
+        if ($this->ignoreMissingProperties) {
+            $url .= '?ignoreMissingProperties=true';
+        }
+
+        return new Request('PUT', $url, [], json_encode($values));
     }
 
     /**
@@ -413,6 +426,18 @@ class Grammar extends BaseGrammar
     public function getOperators(): array
     {
         return $this->operators;
+    }
+
+    /**
+     * Set whether to ignore missing properties in API requests
+     *
+     * @param bool $ignore
+     * @return $this
+     */
+    public function setIgnoreMissingProperties(bool $ignore = true)
+    {
+        $this->ignoreMissingProperties = $ignore;
+        return $this;
     }
 
     // @codeCoverageIgnoreStart

@@ -8,6 +8,18 @@ class Builder extends BaseBuilder
 {
     public $operators = [];
 
+    /**
+     * Set whether to ignore missing properties in API requests
+     *
+     * @param bool $ignore
+     * @return $this
+     */
+    public function ignoreMissingProperties(bool $ignore = true)
+    {
+        $this->grammar->setIgnoreMissingProperties($ignore);
+        return $this;
+    }
+
     public function insert(array $values)
     {
         if (! is_array(reset($values))) {
