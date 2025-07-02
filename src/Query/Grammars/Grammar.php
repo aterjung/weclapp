@@ -196,7 +196,14 @@ class Grammar extends BaseGrammar
             if (!in_array($where['type'], ['In', 'NotIn', 'Null', 'NotNull', 'Entity'])) {
                 $where['type'] = 'Basic';
             }
-            return $this->{"where{$where['type']}"}($query, $where);
+
+            // Prüfen, ob es sich um eine "orWhere"-Bedingung handelt
+            $compiledWhere = $this->{"where{$where['type']}"}($query, $where);
+            if (isset($where['boolean']) && $where['boolean'] === 'or') {
+                $compiledWhere[0] = 'or-' . $compiledWhere[0]; // "or-" Präfix hinzufügen
+            }
+
+            return $compiledWhere;
         })->all();
     }
 
