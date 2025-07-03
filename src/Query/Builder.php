@@ -7,6 +7,7 @@ use Illuminate\Database\Query\Expression;
 class Builder extends BaseBuilder
 {
     public $operators = [];
+    public $filterExpressions = [];
 
     /**
      * Set whether to ignore missing properties in API requests
@@ -16,7 +17,20 @@ class Builder extends BaseBuilder
      */
     public function ignoreMissingProperties(bool $ignore = true)
     {
-        $this->grammar->setIgnoreMissingProperties($ignore);
+        $this->query->ignoreMissingProperties($ignore);
+        return $this;
+    }
+
+    /**
+     * Add a filter expression to the query.
+     *
+     * @param  string  $expression
+     * @return $this
+     */
+    public function filterExpression($expression)
+    {
+        $this->filterExpressions[] = $expression;
+
         return $this;
     }
 

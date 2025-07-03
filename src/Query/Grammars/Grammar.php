@@ -57,6 +57,7 @@ class Grammar extends BaseGrammar
         'aggregate',
         'columns',
         'wheres',
+        'filterExpressions',
         'orders',
         'offset',
         'limit',
@@ -101,11 +102,25 @@ class Grammar extends BaseGrammar
             unset($components['aggregate']);
         }
 
-        $queryColumns = $components['wheres'];
-        unset($components['wheres']);
+        $queryColumns = [];
 
-        foreach($components as $columns) {
-          $queryColumns[] = $columns;
+        // Add wheres component if it exists
+        if (isset($components['wheres'])) {
+            $queryColumns = array_merge($queryColumns, $components['wheres']);
+            unset($components['wheres']);
+        }
+
+        // Add other components
+        foreach($components as $component) {
+            if (is_array($component)) {
+                if (isset($component[0]) && is_array($component[0])) {
+                    // If component is already an array of arrays, merge it
+                    $queryColumns = array_merge($queryColumns, $component);
+                } else {
+                    // If component is a single array, add it
+                    $queryColumns[] = $component;
+                }
+            }
         }
 
         $queryParams = array_column($queryColumns, 1, 0);
@@ -205,6 +220,30 @@ class Grammar extends BaseGrammar
 
             return $compiledWhere;
         })->all();
+    }
+
+    /**
+     * Compile the filter expressions for the query.
+     *
+     * @param Builder $query
+     * @param array $filterExpressions
+     * @return array
+     */
+    protected function compileFilterExpressions(Builder $query, array $filterExpressions): array
+    {
+        $result = [];
+
+        foreach ($filterExpressions as $index => $expression) {
+            // Use a unique key for each filter expression to avoid overwriting
+            // when multiple filter expressions are used
+            $key = 'filter';
+            if ($index > 0) {
+                $key = 'filter' . ($index + 1);
+            }
+            $result[] = [$key, urlencode($expression)];
+        }
+
+        return $result;
     }
 
     /**
