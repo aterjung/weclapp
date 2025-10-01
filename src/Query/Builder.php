@@ -17,7 +17,7 @@ class Builder extends BaseBuilder
      */
     public function ignoreMissingProperties(bool $ignore = true)
     {
-        $this->query->ignoreMissingProperties($ignore);
+        $this->grammar->setIgnoreMissingProperties($ignore);
         return $this;
     }
 
