@@ -58,6 +58,7 @@ class Grammar extends BaseGrammar
         'columns',
         'wheres',
         'filterExpressions',
+        'includeReferencedEntities',
         'orders',
         'offset',
         'limit',
@@ -188,6 +189,25 @@ class Grammar extends BaseGrammar
     }
 
     /**
+     * Compile includeReferencedEntities parameter
+     *
+     * @param Builder $query
+     * @param array|string|null $value
+     * @return array|null
+     */
+    protected function compileIncludeReferencedEntities(Builder $query, $value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+        // If value is passed as an array of keys, implode to comma-separated list
+        if (is_array($value)) {
+            $value = implode(',', $value);
+        }
+        return ['includeReferencedEntities', $value];
+    }
+
+    /**
      * Compile the "from" portion of the query.
      *
      * @param Builder $query
@@ -207,19 +227,43 @@ class Grammar extends BaseGrammar
      */
     public function compileWheres(Builder $query): array
     {
-        return collect($query->wheres)->map(function ($where) use ($query) {
-            if (!in_array($where['type'], ['In', 'NotIn', 'Null', 'NotNull', 'Entity'])) {
-                $where['type'] = 'Basic';
-            }
+        if (empty($query->wheres)) {
+            return [];
+        }
 
-            // Prüfen, ob es sich um eine "orWhere"-Bedingung handelt
-            $compiledWhere = $this->{"where{$where['type']}"}($query, $where);
-            if (isset($where['boolean']) && $where['boolean'] === 'or') {
-                $compiledWhere[0] = 'or-' . $compiledWhere[0]; // "or-" Präfix hinzufügen
-            }
+        return collect($query->wheres)
+            ->filter(function ($where) {
+                // Ensure minimal keys exist to avoid undefined index notices
+                return is_array($where) && isset($where['type']);
+            })
+            ->map(function ($where) use ($query) {
+                $type = $where['type'];
+                if (!in_array($type, ['In', 'NotIn', 'Null', 'NotNull', 'Entity'])) {
+                    $type = 'Basic';
+                }
 
-            return $compiledWhere;
-        })->all();
+                // Guard for operator/value missing on Basic
+                if ($type === 'Basic') {
+                    if (!isset($where['operator'])) {
+                        // skip invalid basic where without operator
+                        return null;
+                    }
+                    if (!array_key_exists('value', $where)) {
+                        // skip invalid basic where without value
+                        return null;
+                    }
+                }
+
+                $compiledWhere = $this->{"where{$type}"}($query, $where);
+                if (isset($where['boolean']) && $where['boolean'] === 'or' && isset($compiledWhere[0])) {
+                    $compiledWhere[0] = 'or-' . $compiledWhere[0];
+                }
+
+                return $compiledWhere;
+            })
+            ->filter() // drop nulls
+            ->values()
+            ->all();
     }
 
     /**

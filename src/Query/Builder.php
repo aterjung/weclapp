@@ -8,6 +8,7 @@ class Builder extends BaseBuilder
 {
     public $operators = [];
     public $filterExpressions = [];
+    public $includeReferencedEntities = null;
 
     /**
      * Set whether to ignore missing properties in API requests

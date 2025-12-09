@@ -21,13 +21,13 @@ WECLAPP_API_KEY=your-key
 
 ## Usage
 
-Use existing models from "Geccomedia\Weclapp\Models"-Namespace.
+Use existing models from "Geccomedia\\Weclapp\\Models"-Namespace.
 
 Most Eloquent methods are implemented within the limitations of the web api.
 ```
 <?php
 
-use Geccomedia\Weclapp\Models\Customer;
+use Geccomedia\\Weclapp\\Models\\Customer;
 
 class YourClass
 {
@@ -36,6 +36,111 @@ class YourClass
         $customer = Customer::where('company', 'Your Company Name')
             ->firstOrFail();
 ```
+
+### Referenced Entities and Eager Loading
+
+Weclapp's API can return referenced entities (e.g. belongs-to targets) in the same response.
+This package supports that in two ways:
+
+- Directly request specific foreign keys via includeReferencedEntities()
+- Use Laravel-style with() for belongsTo relations and let the package handle it automatically
+
+Basic API usage (manual):
+```
+use Geccomedia\\Weclapp\\Models\\Article;
+
+$articles = Article::query()
+    ->select(['id','name','unitId','articleCategoryId'])
+    ->includeReferencedEntities(['unitId','articleCategoryId'])
+    ->get();
+
+// Fetch the referencedEntities object from the last request
+$referenced = Article::query()->getModel()->getConnection()->getLastReferencedEntities();
+```
+
+Laravel-like eager loading for belongsTo:
+```
+use Geccomedia\\Weclapp\\Models\\Article;
+
+// Define relations on your model as usual, e.g. in Article model:
+// public function unit() { return $this->belongsTo(\Geccomedia\\Weclapp\\Models\\Unit::class, 'unitId'); }
+// public function articleCategory() { return $this->belongsTo(\Geccomedia\\Weclapp\\Models\\ArticleCategory::class, 'articleCategoryId'); }
+
+$articles = Article::query()
+    ->select(['id','name','unitId','articleCategoryId'])
+    ->with(['unit', 'articleCategory'])
+    ->get();
+
+foreach ($articles as $article) {
+    $unit = $article->unit; // Already hydrated from the same API call (or null if not present)
+    $cat  = $article->articleCategory;
+}
+```
+
+Notes:
+- This auto-hydration is optimized for belongsTo relations where the parent has a foreign key like unitId.
+- The Weclapp response groups referenced records under keys matching the foreign key without the trailing "Id" (e.g., unitId → unit).
+- If a requested relation is not present in the API's referencedEntities block, Eloquent will fall back to its normal eager loading (which may perform additional API calls per relation).
+- If you select specific columns, ensure the foreign key columns are included or use with(), which ensures they are selected.
+
+### Eager loading without declaring relations (simple/inferred)
+
+If you don't want to add relation methods on your models, you can still eager-load referenced entities using an inferred helper:
+
+```
+use Geccomedia\\Weclapp\\Models\\Article;
+
+// Infer foreign keys as relationName . 'Id' (e.g. unit => unitId)
+$articles = Article::query()
+    ->select(['id','name','unitId','articleCategoryId'])
+    ->withReferenced(['unit','articleCategory'])
+    ->get();
+
+foreach ($articles as $article) {
+    // Access like a property. Since the relation is preloaded via the API response,
+    // you can read it even without a relation method on the model.
+    $unit = $article->unit;               // array of attributes (or null)
+    $cat  = $article->articleCategory;    // array of attributes (or null)
+}
+```
+
+Optionally, provide a map to hydrate as specific model classes:
+
+```
+use Geccomedia\\Weclapp\\Models\\Unit;
+use Geccomedia\\Weclapp\\Models\\ArticleCategory;
+
+$articles = Article::query()
+    ->select(['id','name','unitId','articleCategoryId'])
+    ->withReferenced([
+        'unit' => Unit::class,
+        'articleCategory' => ArticleCategory::class,
+    ])
+    ->get();
+
+$firstUnit = $articles->first()->unit; // Unit model instance
+```
+
+- This is a convenience wrapper over Weclapp's includeReferencedEntities and does not cover has-many relations.
+- Key inference uses the simple rule: relationName + 'Id' and referenced bucket named by removing trailing 'Id'.
+- If an endpoint uses different naming (e.g. customerId → party), either use withReferenced(['customer']) which now understands common defaults, or define an explicit relation or per-model map (see below).
+
+Advanced: per-model referenced bucket overrides
+- You can define a property on your model to override how foreign keys map to referencedEntities buckets:
+
+```php
+class SalesOrder extends \Geccomedia\Weclapp\Model {
+    protected $table = 'salesOrder';
+
+    // Map FK to referenced bucket key returned by Weclapp
+    protected array $referencedEntityBucketMap = [
+        'customerId' => 'party', // Weclapp returns customer as party
+        // 'supplierId' => 'party', etc.
+    ];
+}
+```
+
+- The package will use this map for eager hydration even when using withReferenced() or with().
 
 ## Custom models
 

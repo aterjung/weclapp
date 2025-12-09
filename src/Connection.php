@@ -19,6 +19,12 @@ class Connection implements ConnectionInterface
     protected $client;
 
     /**
+     * Stores referencedEntities from the last select response
+     * @var array|null
+     */
+    protected ?array $lastReferencedEntities = null;
+
+    /**
      * The query grammar implementation.
      *
      * @var \Illuminate\Database\Query\Grammars\Grammar
@@ -162,9 +168,16 @@ class Connection implements ConnectionInterface
      */
     public function select($query, $bindings = [], $useReadPdo = true)
     {
+        // reset last referenced entities before running a new select
+        $this->lastReferencedEntities = null;
         return $this->run($query, [], function ($query) {
             $response = $this->client->send($query);
             $items = json_decode($response->getBody(), true);
+
+            // capture referencedEntities if present
+            if (isset($items['referencedEntities']) && is_array($items['referencedEntities'])) {
+                $this->lastReferencedEntities = $items['referencedEntities'];
+            }
 
             if (!isset($items['result'])) {
                 return null;
@@ -360,6 +373,16 @@ class Connection implements ConnectionInterface
     public function getPostProcessor()
     {
         return $this->postProcessor;
+    }
+
+    /**
+     * Get referenced entities captured from the last select response.
+     *
+     * @return array|null
+     */
+    public function getLastReferencedEntities(): ?array
+    {
+        return $this->lastReferencedEntities;
     }
 
     public function getName()
